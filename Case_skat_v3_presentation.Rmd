@@ -1,0 +1,396 @@
+---
+title: "Hossain Interview 2"
+author: "Hossain Morshed"
+date: "1/16/2022"
+output:
+  slidy_presentation: default
+  ioslides_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## we have two data table. Go
+```{r}
+rm(list=ls(all=TRUE))
+```
+
+
+```{r}
+if(!require("tidyverse")){
+  install.packages("tidyverse")
+}
+
+library(tidyverse)
+library(ggplot2)
+```
+
+## we have two data table
+- First data table, which is 'Sagsbehandlingsdata'
+
+```{r}
+library(readxl)
+case_table<-read_excel('Sagsbehandlingsdata.xlsx')
+head(case_table)
+
+```
+
+- Second data table 'Tidsregistreringsdata'
+```{r}
+time_table<-read_excel('Tidsregistreringsdata.xlsx')
+head(time_table)
+```
+
+```{r}
+glimpse(case_table)
+```
+
+## Summary of the dataset
+- Summary of 'Sagsbehandlingsdata'
+```{r}
+summary(case_table)
+```
+- Summary of 'Tidsregistreringsdata'
+```{r}
+summary(time_table)
+```
+
+```{r}
+colSums(is.na(case_table))
+```
+
+```{r}
+colSums(case_table=="")
+```
+
+## Total number of control is 10000
+Total number of control which is completed 4452\
+Total number of control which is not completed 5548
+```{r}
+case_table %>% count(`Afsluttet med træf`)%>%rename(Total=n)
+```
+- 0 = Complete
+- 1 = Not Complete
+
+## Total number of each control 
+- we have 10 different type of control
+- k04 type of control repeted most which is 4025
+- k02 type of control repeted less which is only 5 times
+- below chart show total number of control and how many of them are done
+```{r}
+a<-case_table %>% count(Kontroltype)%>% rename(total_number = n )
+a
+a%>%summarise(max=max(total_number),min=min(total_number))
+
+```
+
+
+```{r}
+b<-case_table %>% filter(`Afsluttet med træf`==1)%>%count(Kontroltype)%>% rename(total_control_done = n )
+```
+
+
+```{r}
+merge(a,b)
+```
+
+
+```{r}
+df_control<-merge(a,b)
+```
+
+
+```{r}
+df_control <- gather(df_control, event, total, total_number:total_control_done)
+#df_control
+```
+
+## Graph show total number of control and control which is completed
+```{r}
+ggplot(df_control, aes(Kontroltype, total, fill=event)) + geom_bar(stat = "identity", position = 'dodge')  + ggtitle("Comparision between total control and total_control_done")+ geom_text(aes(label=total), vjust=-0.3, size=3.5,check_overlap = TRUE,angle = 0, position = position_dodge(.9))+theme_minimal()
+
+```
+
+## Total Revenue
+
+-Total money need to collect is 173741135\
+-Total money need to refund is 7697249\
+-Total Revenue is 166043886
+
+```{r}
+case_table%>%summarise(total_money_collect=sum(`Provenu af kontrol`[which(case_table$`Provenu af kontrol`>0)]),total_money_refund=sum(`Provenu af kontrol`[which(case_table$`Provenu af kontrol`<0)]),total_revenue=sum(`Provenu af kontrol`))
+#sum(case_table$`Provenu af kontrol`[which(case_table$`Provenu af kontrol`>0)])
+#sum(case_table$`Provenu af kontrol`[which(case_table$`Provenu af kontrol`<0)])
+#sum(case_table$`Provenu af kontrol`)
+#case_table %>% colSums (case_table$`Provenu af kontrol`)
+```
+
+
+```{r}
+s_t_money<-case_table %>% filter(`Afsluttet med træf`==1)%>% arrange((Sagsbehandler)) %>%group_by(Sagsbehandler)%>%summarise(total_amount_collect = sum(`Provenu af kontrol`[which(`Provenu af kontrol`>0)]))
+```
+
+
+```{r}
+s_t_refund<-case_table %>% filter(`Afsluttet med træf`==1)%>% arrange((Sagsbehandler)) %>%group_by(Sagsbehandler)%>%summarise(Total_amount_refund = sum(`Provenu af kontrol`[which(`Provenu af kontrol`<0)]))
+```
+
+```{r}
+merge(s_t_money,s_t_refund)
+merge_collect_refund<-merge(s_t_money,s_t_refund)
+```
+
+```{r}
+total_revenue<-case_table %>% filter(`Afsluttet med træf`==1)%>% arrange((Sagsbehandler)) %>%group_by(Sagsbehandler)%>%summarise(Total_revenue = sum(`Provenu af kontrol`))
+```
+
+## Each case office and total amount of money to collect
+Total amount of money each case officer has to collect, refund and finally total revenue
+```{r}
+merge(merge_collect_refund,total_revenue)
+collect_refund_revenue<-merge(merge_collect_refund,total_revenue)
+```
+
+```{r}
+#collect_refund_revenue%>%summarise(avg = mean(total_amount_collect))
+summary(collect_refund_revenue)
+```
+
+## Employee who has to collect most of the money
+- we catagorise top case worker based on mean and median value\
+top case worker who falls above mean value. we can see that total 6 case worker fall above the mean line. and they have to collect total 145713469 out of 173741135 which is 83.86815 %\
+we can see that total 10 case worker fall above the median line. and they have to collect total 167262849 out of 173741135 which is 96.2713 %\
+
+```{r}
+
+collect_refund_revenue%>%arrange(desc(total_amount_collect))%>% filter(total_amount_collect>mean(total_amount_collect))
+top_6_sag<-collect_refund_revenue%>%arrange(desc(total_amount_collect))%>% filter(total_amount_collect>mean(total_amount_collect))
+collect_refund_revenue%>%arrange(desc(total_amount_collect))%>% filter(total_amount_collect>mean(total_amount_collect))%>%summarise(sum_of_total_amount_collect = sum(total_amount_collect))
+print(" ")
+
+collect_refund_revenue%>%arrange(desc(total_amount_collect))%>% filter(total_amount_collect>median(total_amount_collect))
+collect_refund_revenue%>%arrange(desc(total_amount_collect))%>% filter(total_amount_collect>median(total_amount_collect))%>%summarise(sum_of_total_total_amount = sum(total_amount_collect))
+#collect_refund_revenue%>%arrange(desc(total_amount_collect))%>%top_n(5,total_amount_collect)
+#collect_refund_revenue%>%arrange(desc(total_amount_collect))
+```
+
+
+
+```{r}
+(145713469/173741135)*100
+(167262849/173741135)*100
+```
+
+
+```{r}
+# spread employee time table
+spread(time_table,Aktivitet,Timer)
+time_table_spread1<-spread(time_table,Aktivitet,Timer)
+```
+
+# pairs.panels() - lists correlations, histograms and scatter plots on the same matrix
+```{r}
+psych::pairs.panels(time_table_spread1)
+
+```
+we can see that actual work time has a negative corelation with course and meetings which is -.29 and -.64
+ferie and course has negative correlation which is -.61 which means if one oncrease othe decrease.
+seek and meating has negative correlation which is -.35
+
+
+```{r}
+# seperate top 6 employee time table
+time_table_spread<-time_table_spread1%>%rename(Sagsbehandler=Medarbejdernummer)
+top_6_sag_time<-merge(top_6_sag,time_table_spread,all.x = TRUE)
+top_6_sag_time%>%arrange(desc(total_amount_collect))%>%select(-total_amount_collect,-Total_amount_refund,-Total_revenue)
+```
+psych::pairs.panels(time_table_spread1)
+
+
+
+
+```{r}
+case_table %>% filter(`Afsluttet med træf`==1)%>% arrange((Sagsbehandler)) %>%group_by(Sagsbehandler,Kontroltype)%>%summarise(`Provenu af kontrol` = sum(`Provenu af kontrol`[which(`Provenu af kontrol`>0)]))
+```
+
+## Each control type and total amount of money 
+- below table show each control type and total amount of money need to collect.
+
+
+```{r}
+case_table %>% filter(`Afsluttet med træf`==1)%>% arrange((Sagsbehandler)) %>%group_by(Kontroltype)%>%summarise(total_amount = sum(`Provenu af kontrol`[which(`Provenu af kontrol`>0)]))
+c_money<-case_table %>% filter(`Afsluttet med træf`==1)%>% arrange((Sagsbehandler)) %>%group_by(Kontroltype)%>%summarise(total_amount = sum(`Provenu af kontrol`[which(`Provenu af kontrol`>0)]))
+```
+
+## comparision total amount and each type of control
+- we can see that most amount of money we need to collect is k04 type of control.
+```{r}
+ggplot(c_money, aes(Kontroltype, total_amount)) + geom_bar(stat = "identity",fill="steelblue") + geom_text(aes(label=total_amount), vjust=-0.3, size=3.5)+theme_minimal() + ggtitle("Comparision between Kontrol type and total amount")
+```
+
+```{r}
+case_table %>% filter(`Afsluttet med træf`==1 & Kontroltype=='K04' & (`Provenu af kontrol`>0))%>%group_by(Sagsbehandler)%>%summarise(k04_Total_amount = sum(`Provenu af kontrol`[which(`Provenu af kontrol`>0)]))%>%arrange(desc(k04_Total_amount))
+
+k04_type_top_employee<-case_table %>% filter(`Afsluttet med træf`==1 & Kontroltype=='K04' & (`Provenu af kontrol`>0))%>%group_by(Sagsbehandler)%>%summarise(k04_Total_amount = sum(`Provenu af kontrol`[which(`Provenu af kontrol`>0)]))%>%arrange(desc(k04_Total_amount))
+```
+
+
+## Top 6 employee who has to collect k04 type control
+```{r}
+k04_type_top_employee%>%filter(k04_Total_amount>mean( k04_Total_amount))
+k04_type_top6<-k04_type_top_employee%>%filter(k04_Total_amount>mean( k04_Total_amount))
+```
+
+
+```{r}
+top_6_employee_totalamount_k4<-full_join(top_6_sag, k04_type_top6, by = "Sagsbehandler")
+full_join(top_6_sag, k04_type_top6, by = "Sagsbehandler")
+```
+
+- who are also the same top 6 employee who have to collect total amount  
+```{r}
+top_6_employee_totalamount_k4%>%mutate(percentage=(k04_Total_amount/total_amount_collect)*100)%>%select(-Total_amount_refund,-Total_revenue)
+```
+
+## which kind of control mostly done
+
+```{r}
+case_table %>% filter(`Afsluttet med træf`==0) %>%group_by(Kontroltype)%>%count(Kontroltype)%>%rename(total_number = n)
+most_done_kontrol<-case_table %>% filter(`Afsluttet med træf`==0) %>%group_by(Kontroltype)%>%count(Kontroltype)%>%rename(total_number = n)
+
+```
+
+- Bar chart of completed control
+```{r}
+ggplot(most_done_kontrol, aes(Kontroltype,total_number,fill=Kontroltype)) + geom_bar(stat="identity", width=1,color="white") + geom_text(aes(label=total_number), vjust=-0.3, size=3.5)
+```
+## Total time spend by employee in different activities
+
+```{r}
+time_table %>%group_by(Aktivitet)%>% summarise(total_time=sum(Timer))
+```
+
+- Actual work time spend by different employee
+```{r}
+ggplot(time_table_spread, aes(Sagsbehandler, `Sagsbehandling med kontrol`, fill = Sagsbehandler)) + 
+  geom_point()+geom_bar(stat="identity", width=1)
+```
+
+```{r}
+time_table_spread%>%summarise(Avg_Ferie=mean(Ferie),Avg_Kontormøder=mean(Kontormøder),Avg_Kursusdeltagelse=mean(Kursusdeltagelse),Avg_work_time=mean(`Sagsbehandling med kontrol`),Avg_Sygdom=mean(Sygdom))
+
+```
+
+
+```{r}
+top_6_sag_time%>%arrange(desc(total_amount_collect))%>%select(-total_amount_collect,-Total_amount_refund,-Total_revenue)
+```
+
+
+```{r}
+top_6_sag_timetable<-top_6_sag_time%>%arrange(desc(total_amount_collect))%>%select(-total_amount_collect,-Total_amount_refund,-Total_revenue)
+```
+
+  
+  
+```{r}
+#time_table
+mean_df_timetable<-time_table %>% group_by(Aktivitet)%>%summarise(mean_val=mean(Timer))
+time_table %>% group_by(Aktivitet)%>%summarise(mean_val=mean(Timer))
+```
+  
+```{r}
+top_6_sag_timetable%>%gather("Aktivitet","time",2:6)%>%ggplot(., aes(Sagsbehandler, time,col=Aktivitet,group = 1))+geom_point()+geom_line()+facet_wrap(~Aktivitet)+geom_hline(mean_df_timetable,mapping =aes(yintercept=mean_val,col=Aktivitet))
+
+```
+
+
+
+```{r}
+psych::pairs.panels(top_6_sag_timetable)
+```
+
+
+## each employee overview of control
+```{r}
+#case_table %>% arrange((Sagsbehandler))%>%group_by(Sagsbehandler)
+
+s1<-case_table %>% arrange((Sagsbehandler))%>%group_by(Sagsbehandler)%>% distinct(Kontroltype)%>%count(Sagsbehandler)%>%rename(assigned_control=n)# need this one
+
+s2<-case_table %>% arrange((Sagsbehandler))%>%group_by(Sagsbehandler)%>%count(Sagsbehandler)%>%rename(assigned_work=n)
+s3<-case_table %>% arrange((Sagsbehandler))%>%filter(`Afsluttet med træf`== 0)%>%count(Sagsbehandler)%>%rename(completed_work=n)
+
+s4<-case_table %>% arrange((Sagsbehandler))%>%filter(`Afsluttet med træf`== 1)%>%count(Sagsbehandler)%>%rename(incomplete_work=n)
+s5<-merge(s1,s2)
+#merge(s5,s3,all.x = TRUE)
+s6<-merge(s5,s3,all.x = TRUE)
+case_officer_table1<-merge(s6,s4,all.x = TRUE)
+
+case_officer_table1[is.na(case_officer_table1)] <- 0
+case_officer_table1
+#zz[is.na(zz)] <- 0
+
+#merge(x = df1, y = df2, by = "CustomerId", all.x = TRUE)
+```
+
+
+
+```{r}
+#top_6_sag_time
+target <- c("W05", "W07","W08","W15","W17","W19")
+case_officer_table1%>%filter(Sagsbehandler %in% target)
+```
+We can see that top 6 case worker who are responsible to collect 84% of total revenue
+are able to work almost 10 type of control out of 10 control.
+
+
+
+We can see from our small analysis that these 6 employees are the most skilled employees, 
+can work All types of control, that’s why they are responsible to collect most of the revenue.
+Through proper training and course work, we can increase the rest of the employee's skills 
+so the task can be distributed to the rest of the employees as well.
+
+To find more insight from the dataset we need to do more analysis.
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
